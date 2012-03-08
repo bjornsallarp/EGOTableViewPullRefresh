@@ -36,12 +36,13 @@
 @end
 
 @implementation EGORefreshTableHeaderView
-
+@synthesize dateFormat = _dateFormat;
 @synthesize delegate=_delegate;
 
 
-- (id)initWithFrame:(CGRect)frame {
-    if (self = [super initWithFrame:frame]) {
+- (id)initWithFrame:(CGRect)frame 
+{
+    if ((self = [super initWithFrame:frame])) {
 		
 		self.autoresizingMask = UIViewAutoresizingFlexibleWidth;
 		self.backgroundColor = [UIColor colorWithRed:226.0/255.0 green:231.0/255.0 blue:237.0/255.0 alpha:1.0];
@@ -90,33 +91,58 @@
 		_activityView = view;
 		[view release];
 		
-		
 		[self setState:EGOOPullRefreshNormal];
-		
     }
 	
     return self;
 	
 }
 
+- (void)layoutSubviews
+{
+    // If the source is already reloading when the view becomes visible it should become visible
+    if ([_delegate respondsToSelector:@selector(egoRefreshTableHeaderDataSourceIsLoading:)] && [_delegate egoRefreshTableHeaderDataSourceIsLoading:self]) {
+        [self setState:EGOOPullRefreshLoading];
+        if ([self.superview isKindOfClass:[UIScrollView class]]) {
+            UIScrollView *scrollView = (UIScrollView *)self.superview;
+            [scrollView setContentOffset:CGPointMake(0, -60)];
+            [self egoRefreshScrollViewDidScroll:scrollView];
+        }
+    }
+}
 
-#pragma mark -
-#pragma mark Setters
+
+#pragma mark - Setters
+
+- (void)setArrowImage:(UIImage *)arrowImage
+{
+    _arrowImage.contents = (id)arrowImage.CGImage;
+}
+
+- (void)setTextColor:(UIColor *)textColor
+{
+    _statusLabel.textColor = _lastUpdatedLabel.textColor = textColor;
+}
 
 - (void)refreshLastUpdatedDate {
-	
+	 
 	if ([_delegate respondsToSelector:@selector(egoRefreshTableHeaderDataSourceLastUpdated:)]) {
 		
 		NSDate *date = [_delegate egoRefreshTableHeaderDataSourceLastUpdated:self];
 		
-		NSDateFormatter *formatter = [[NSDateFormatter alloc] init];
-		[formatter setAMSymbol:@"AM"];
-		[formatter setPMSymbol:@"PM"];
-		[formatter setDateFormat:@"MM/dd/yyyy hh:mm:a"];
-		_lastUpdatedLabel.text = [NSString stringWithFormat:@"Last Updated: %@", [formatter stringFromDate:date]];
-		[[NSUserDefaults standardUserDefaults] setObject:_lastUpdatedLabel.text forKey:@"EGORefreshTableView_LastRefresh"];
-		[[NSUserDefaults standardUserDefaults] synchronize];
-		[formatter release];
+        if (date != nil) {
+            NSDateFormatter *formatter = [[NSDateFormatter alloc] init];
+            [formatter setAMSymbol:@"AM"];
+            [formatter setPMSymbol:@"PM"];
+            [formatter setDateFormat:self.dateFormat ? self.dateFormat : @"MM/dd/yyyy hh:mm:a"];
+            _lastUpdatedLabel.text = [NSString stringWithFormat:@"%@ %@", NSLocalizedString(@"Last Updated:", @"Last Updated:"), [formatter stringFromDate:date]];
+            [[NSUserDefaults standardUserDefaults] setObject:_lastUpdatedLabel.text forKey:@"EGORefreshTableView_LastRefresh"];
+            [[NSUserDefaults standardUserDefaults] synchronize];
+            [formatter release];            
+        }
+        else {
+            _lastUpdatedLabel.text = nil;
+        }
 		
 	} else {
 		
@@ -176,8 +202,7 @@
 }
 
 
-#pragma mark -
-#pragma mark ScrollView Methods
+#pragma mark - ScrollView Methods
 
 - (void)egoRefreshScrollViewDidScroll:(UIScrollView *)scrollView {	
 	
@@ -208,8 +233,8 @@
 	
 }
 
-- (void)egoRefreshScrollViewDidEndDragging:(UIScrollView *)scrollView {
-	
+- (void)egoRefreshScrollViewDidEndDragging:(UIScrollView *)scrollView 
+{	
 	BOOL _loading = NO;
 	if ([_delegate respondsToSelector:@selector(egoRefreshTableHeaderDataSourceIsLoading:)]) {
 		_loading = [_delegate egoRefreshTableHeaderDataSourceIsLoading:self];
@@ -228,33 +253,30 @@
 		[UIView commitAnimations];
 		
 	}
-	
 }
 
-- (void)egoRefreshScrollViewDataSourceDidFinishedLoading:(UIScrollView *)scrollView {	
-	
+- (void)egoRefreshScrollViewDataSourceDidFinishedLoading:(UIScrollView *)scrollView 
+{		
 	[UIView beginAnimations:nil context:NULL];
 	[UIView setAnimationDuration:.3];
 	[scrollView setContentInset:UIEdgeInsetsMake(0.0f, 0.0f, 0.0f, 0.0f)];
 	[UIView commitAnimations];
 	
 	[self setState:EGOOPullRefreshNormal];
-
 }
 
 
-#pragma mark -
-#pragma mark Dealloc
+#pragma mark - Dealloc
 
 - (void)dealloc {
 	
-	_delegate=nil;
+    [_dateFormat release];
+	_delegate = nil;
 	_activityView = nil;
 	_statusLabel = nil;
 	_arrowImage = nil;
 	_lastUpdatedLabel = nil;
     [super dealloc];
 }
-
 
 @end

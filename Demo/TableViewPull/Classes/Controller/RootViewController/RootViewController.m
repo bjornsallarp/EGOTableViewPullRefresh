@@ -38,6 +38,10 @@
 		[self.tableView addSubview:view];
 		_refreshHeaderView = view;
 		[view release];
+        
+        [view setTextColor:[UIColor blackColor]];
+        [view setArrowImage:[UIImage imageNamed:@"blackArrow.png"]];
+        [view setDateFormat:@"yyyy/MM/dd HH:mm"];
 		
 	}
 	
